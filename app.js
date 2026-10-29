@@ -115,13 +115,15 @@
   function filename(ext){const c=controlSettings();return study==='channel'?`canopy-supplied-artwork-${Math.round(t*100)}pct.${ext}`:`canopy-${study==='classic'?'folded':study==='generated'?'generated-coral':'source-coral'}-${modelFor(study).seed}-d${c.density}-detail${c.detail}-w${c.lineWeight}-shrink${c.squareShrink}-${Math.round(t*100)}pct.${ext}`;}
   $('save-svg').onclick=()=>{if(!model||generating)return;const p=colours();download(new Blob([E.svg(modelFor(study),study,t,{...motionOptions(),ink:p.ink,paper:$('transparent').checked?'':p.paper,size:1600})],{type:'image/svg+xml'}),filename('svg'));say(`Saved ${meta[study].label.toLowerCase()} at ${Math.round(t*100)}% growth.`);};
   $('save-png').onclick=async()=>{if(!model||generating)return;const btn=$('save-png');btn.disabled=true;try{const p=colours(),blob=new Blob([E.svg(modelFor(study),study,t,{...motionOptions(),ink:p.ink,paper:$('transparent').checked?'':p.paper,size:3200})],{type:'image/svg+xml'}),url=URL.createObjectURL(blob),img=new Image();const loaded=new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;});img.src=url;await loaded;const canvas=document.createElement('canvas');canvas.width=canvas.height=1600;const high=document.createElement('canvas');high.width=high.height=3200;high.getContext('2d').drawImage(img,0,0,3200,3200);const context=canvas.getContext('2d');context.imageSmoothingEnabled=true;context.imageSmoothingQuality='high';context.drawImage(high,0,0,1600,1600);URL.revokeObjectURL(url);const png=await new Promise(r=>canvas.toBlob(r,'image/png'));if(!png)throw Error('No PNG data');download(png,filename('png'));say('Saved a 1600 × 1600 PNG of the current frame.');}catch(e){say('PNG export failed. Try SVG instead.');}finally{btn.disabled=false;}};
+  $('movie-size').onchange=()=>{const size=$('movie-size').value;$('export-hint').textContent=`SVG / PNG: current frame · MP4: full growth, ${size} × ${size}, 60 fps, selected background`;};
   $('cancel-mp4').onclick=()=>exportAbort?.abort();
   $('save-mp4').onclick=async()=>{
     if(!model||generating||exporting)return;
-    const snapshot={model:modelFor(study),study,options:{...motionOptions(),...colours()},name:filename('mp4').replace(/-\d+pct\.mp4$/, '-1080p60.mp4')};
+    const size=Number($('movie-size').value),dimensions=`${size} × ${size}`;
+    const snapshot={model:modelFor(study),study,options:{...motionOptions(),...colours(),size},name:filename('mp4').replace(/-\d+pct\.mp4$/, `-${size}x${size}-60fps.mp4`)};
     exporting=true;exportAbort=new AbortController();syncStudyControls();$('movie-progress').hidden=false;$('cancel-mp4').hidden=false;$('movie-meter').value=0;
-    $('movie-message').textContent='Preparing 1080 × 1080 / 60 fps…';
-    try{const blob=await CanopyMovie.render({...snapshot,signal:exportAbort.signal,onProgress:(value,message)=>{$('movie-meter').value=value;$('movie-message').textContent=message;}});download(blob,snapshot.name);say('Saved your current pattern as a 1080 × 1080, 60 fps MP4.');$('movie-message').textContent='MP4 saved · 1080 × 1080 · 60 fps';}
+    $('movie-message').textContent=`Preparing ${dimensions} / 60 fps…`;
+    try{const blob=await CanopyMovie.render({...snapshot,signal:exportAbort.signal,onProgress:(value,message)=>{$('movie-meter').value=value;$('movie-message').textContent=message;}});download(blob,snapshot.name);say(`Saved your current pattern as a ${dimensions}, 60 fps MP4.`);$('movie-message').textContent=`MP4 saved · ${dimensions} · 60 fps`;}
     catch(error){say(error.name==='AbortError'?'MP4 export cancelled.':'MP4 export failed. '+error.message);$('movie-message').textContent=$('status').textContent;}
     finally{exporting=false;exportAbort=null;$('cancel-mp4').hidden=true;syncStudyControls();}
   };

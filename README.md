@@ -17,7 +17,7 @@ Then visit <http://localhost:4186>.
 - Four studies: supplied artwork, source-based coral, folded contours, and generated coral
 - Seeded variations, shape controls, timeline playback, and comparison view
 - Current-frame SVG and 1600 × 1600 PNG export
-- Current-settings H.264 MP4 export at 1080 × 1080 / 60 fps, with progress and cancellation
+- Current-settings MP4 export at 1080 × 1080, 2048 × 2048 (2K square), or 4096 × 4096 (4K square), all 60 fps, with progress and cancellation
 - Independent foreground/background choices from the seven approved colours
 - Square output crop, zoom, horizontal/vertical position, drag-to-pan and framing reset
 - Four clearly labelled fixed reference films in `exports/`
@@ -35,7 +35,7 @@ The app's browser runtime is in the root-level JavaScript and CSS files. `source
 
 **Save MP4** captures the selected study, seed, shape controls, colours, framing and clip duration when clicked. It renders every frame of the full outward growth animation, from square origin through full form, including the existing final hold. Playback speed and the timeline's current position do not affect the movie. Changing controls during rendering affects the preview and future exports; the in-progress movie keeps its captured settings.
 
-Encoding runs locally using WebCodecs H.264 and the bundled MIT-licensed mp4-muxer 5.2.2 (`vendor/`). There is no recording in real time, server upload, runtime CDN dependency or renamed WebM fallback. Use a current Chrome, Edge or compatible Safari over localhost or HTTPS. An unsupported encoder produces an actionable error and leaves still exports available. MP4 always uses the selected opaque background. The transparent checkbox applies to SVG and PNG only.
+Encoding runs locally using WebCodecs H.264 (or HEVC when needed for the selected size) and the bundled MIT-licensed mp4-muxer 5.2.2 (`vendor/`). There is no recording in real time, server upload, runtime CDN dependency or renamed WebM fallback. Use a current Chrome, Edge or compatible Safari over localhost or HTTPS. An unsupported encoder produces an actionable error and leaves still exports available. MP4 always uses the selected opaque background. The transparent checkbox applies to SVG and PNG only.
 
 SVG remains editable vector artwork; PNG is 1600 × 1600. Both save the current timeline frame with the same two colours and framing as the preview. Antialiasing and H.264 compression naturally produce blended edge pixels; the artwork uses only the chosen foreground and background, without additional decorative colours.
 
@@ -54,3 +54,11 @@ Preview backing resolution follows display density (up to 2240 pixels). PNG rend
 Both colour controls provide native keyboard-operable radio swatches, colour names, hex labels and visible selection states. Dragging shows alignment guides, the moved origin and live horizontal/vertical offsets, with centre snapping near zero. Position sliders and Reset framing update the same feedback. The initial hint fades after six seconds; guides fade after movement ends. These are DOM overlays and never enter the canvas or any export.
 
 The immediately preceding complete app runtime is preserved in `saved/2026-10-29-before-contour-smoothing/`. Matched before/after details, a high-zoom MP4 and verification evidence are in the parent project's `output/canopy-export-verification/smoothing/` folder.
+
+## 2K / 4K square video
+
+Choose **MP4 size** beside Save MP4: 1080 × 1080 (default), 2048 × 2048, or 4096 × 4096. Every size retains 60 fps and captures the same selected pattern, controls, palette, framing and growth duration. Filenames and progress include exact dimensions. SVG remains resolution-independent; PNG remains 1600 × 1600.
+
+Before rendering, the app checks the exact size/rate with WebCodecs and encodes a real probe frame. H.264 levels are selected per resolution; HEVC is tried when the requested H.264 size is unavailable. A failed capability check explains the requested size and offers smaller-size/browser alternatives. It never silently reduces size or frame rate. HEVC MP4 playback requires a compatible player.
+
+Bitrate targets scale from 24 Mbps at 1080 to 48 Mbps at 2K and 80 Mbps at 4K. The encoding queue shrinks with frame size, cancellation closes an active encoder (including capability probing), and drawing surfaces are capped at 4096 × 4096. Smaller outputs retain 2× supersampling; 4K draws the vector paths at native resolution without an 8192-pixel intermediate buffer. Higher sizes take longer and produce larger files.
