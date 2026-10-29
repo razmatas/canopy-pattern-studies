@@ -1,6 +1,7 @@
 (function(root){'use strict';
 const source=root.CanopySource||(typeof require!=='undefined'?require('./source-data.js'):null);
 const graph=root.CanopyGraph||(typeof require!=='undefined'?require('./graph-data.js'):null);
+const curves=root.CanopyCurves||(typeof require!=='undefined'?require('./contour-curves.js'):null);
 const C=280,n=source.n,pixel=560/n;
 const bytes=s=>typeof Buffer!=='undefined'?Uint8Array.from(Buffer.from(s,'base64')):Uint8Array.from(atob(s),c=>c.charCodeAt(0));
 const originalAlpha=bytes(source.alpha),runsRaw=bytes(graph.ownerRunsBase64),runs=new DataView(runsRaw.buffer,runsRaw.byteOffset,runsRaw.byteLength);
@@ -50,10 +51,6 @@ function make(seed,config={}){
  return {a:8+rng()*5,b:8+rng()*5,k:.022+rng()*.008,l:.021+rng()*.01,p:rng()*Math.PI*2,q:rng()*Math.PI*2,rotation:Math.floor(rng()*4),mirror:rng()>.5?-1:1,signed,extended,max,added,pruned:selected.reduce((s,v)=>s+v,0),discarded};
 }
 const cases={1:[[3,0]],2:[[0,1]],3:[[3,1]],4:[[1,2]],5:[[3,0],[1,2]],6:[[0,2]],7:[[3,2]],8:[[2,3]],9:[[0,2]],10:[[0,1],[2,3]],11:[[1,2]],12:[[1,3]],13:[[0,1]],14:[[3,0]]};
-function path(points){
- const fmt=n=>n.toFixed(2);let d=`M${fmt(points[0].x)},${fmt(points[0].y)}`;
- for(let i=0;i<points.length;i++){let p0=points[(i+points.length-1)%points.length],p1=points[i],p2=points[(i+1)%points.length],p3=points[(i+2)%points.length];d+=`C${fmt(p1.x+(p2.x-p0.x)/6)},${fmt(p1.y+(p2.y-p0.y)/6)} ${fmt(p2.x-(p3.x-p1.x)/6)},${fmt(p2.y-(p3.y-p1.y)/6)} ${fmt(p2.x)},${fmt(p2.y)}`;}return d+'Z';
-}
 function warp(x,y,model,shrink,p){
  x*=model.mirror;for(let i=0;i<model.rotation;i++){[x,y]=[-y,x];}
  let r=Math.max(Math.abs(x),Math.abs(y));let coreScale=16/12.4*(1-shrink*smooth(p));let scale=1+(coreScale-1)*(1-smooth((r-12.4)/120)); x*=scale;y*=scale;
@@ -74,7 +71,7 @@ function contours(model,p,options={},preview=false){
  for(let i=0;i<segments.length;i++){
  if(used.has(i))continue;used.add(i);const pts=[segments[i][0],segments[i][1]];let cur=pts.at(-1).key,start=pts[0].key;
  while(cur!==start){const next=(lookup.get(cur)||[]).find(([j])=>!used.has(j));if(!next)break;const[j,k]=next;used.add(j);pts.push(segments[j][1-k]);cur=pts.at(-1).key;}
- if(pts.length>8&&cur===start){pts.pop();let smoothed=pts.map((p,j)=>({x:(pts[(j+pts.length-1)%pts.length].x+p.x*2+pts[(j+1)%pts.length].x)/4,y:(pts[(j+pts.length-1)%pts.length].y+p.y*2+pts[(j+1)%pts.length].y)/4}));let outline=smoothed.filter((_,j)=>j%((options.detail??50)<30?5:(options.detail??50)>70?2:3)===0).map(v=>warp(v.x,v.y,model,(options.squareShrink??45)/100,p));if(outline.length>2)loops.push(path(outline));}
+ if(pts.length>8&&cur===start){pts.pop();let smoothed=pts.map((p,j)=>({x:(pts[(j+pts.length-1)%pts.length].x+p.x*2+pts[(j+1)%pts.length].x)/4,y:(pts[(j+pts.length-1)%pts.length].y+p.y*2+pts[(j+1)%pts.length].y)/4}));let outline=smoothed.map(v=>warp(v.x,v.y,model,(options.squareShrink??45)/100,p));if(outline.length>2)loops.push(curves.path(outline,options.detail??50,16*(1-(options.squareShrink??45)/100*smooth(p))));}
  }return loops;
 }
 root.CanopyGraphGrowth={create:make,contours};if(typeof module!=='undefined')module.exports=root.CanopyGraphGrowth;

@@ -73,11 +73,20 @@
   function sourceMarkup(ink,opacity=1){return `<g opacity="${opacity}" transform="scale(${source.scale}) translate(-314.5 -312.5)"><defs><mask id="supplied-mask" maskUnits="userSpaceOnUse" x="-1" y="-1" width="631" height="627"><path fill="white" stroke="none" d="${source.mask}"/></mask></defs><path fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="butt" stroke-linejoin="miter" d="${source.path}" mask="url(#supplied-mask)"/></g>`;}
   let sourcePath=null,sourceMask=null;
   function paint(ctx,parts){for(const p of parts){ctx.save();ctx.globalAlpha=p.opacity??1;if(p.type==='source'){sourcePath=sourcePath||new Path2D(source.path);sourceMask=sourceMask||new Path2D(source.mask);ctx.scale(source.scale,source.scale);ctx.translate(-314.5,-312.5);ctx.clip(sourceMask);ctx.lineWidth=2;ctx.lineCap='butt';ctx.lineJoin='miter';ctx.stroke(sourcePath);}else{ctx.lineWidth=p.w;ctx.stroke(new Path2D(p.d));}ctx.restore();}}
+  function framing(options={}){const f=options.framing||{};return {zoom:clamp(Number(f.zoom)||1,.25,4),x:clamp(Number(f.x)||0,-560,560),y:clamp(Number(f.y)||0,-560,560)};}
+  function draw(canvas,model,study,t,options={}){
+    const ctx=canvas.getContext('2d'),f=framing(options),scale=canvas.width/SIZE;
+    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle=options.paper||'#235355';ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.setTransform(scale,0,0,scale,0,0);ctx.translate(C+f.x,C+f.y);ctx.scale(f.zoom,f.zoom);
+    ctx.strokeStyle=options.ink||'#E3F3AA';ctx.lineCap='round';ctx.lineJoin='round';paint(ctx,geometry(model,study,t,options));
+  }
   function svg(model,study,t,options={}){
     const ink=options.ink||'#ffffff',paper=options.paper===undefined?'#000000':options.paper,parts=geometry(model,study,t,options);
+    const f=framing(options);
     const label=study==='channel'?'supplied SVG':study==='classic'?'folded contours':study==='generated'?'generated coral':'coral growth';
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${options.size||SIZE}" height="${options.size||SIZE}" viewBox="0 0 560 560"><title>Canopy ${label} — growth ${Math.round(t*100)}%</title>${paper?`<rect width="560" height="560" fill="${paper}"/>`:''}<g transform="translate(280 280)" fill="none" stroke="${ink}" stroke-linecap="round" stroke-linejoin="round">${parts.map(p=>p.type==='source'?sourceMarkup(ink,p.opacity):`<path opacity="${p.opacity??1}" stroke-width="${p.w}" d="${p.d}"/>`).join('')}</g></svg>`;
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${options.size||SIZE}" height="${options.size||SIZE}" viewBox="0 0 560 560" overflow="hidden"><title>Canopy ${label} — growth ${Math.round(t*100)}%</title>${paper?`<rect width="560" height="560" fill="${paper}"/>`:''}<g transform="translate(${C+f.x} ${C+f.y}) scale(${f.zoom})" fill="none" stroke="${ink}" stroke-linecap="round" stroke-linejoin="round">${parts.map(p=>p.type==='source'?sourceMarkup(ink,p.opacity):`<path opacity="${p.opacity??1}" stroke-width="${p.w}" d="${p.d}"/>`).join('')}</g></svg>`;
   }
-  root.CanopyEngine={create,geometry,paint,svg,timing,SIZE,defaults,settings};
+  root.CanopyEngine={create,geometry,paint,draw,svg,timing,SIZE,defaults,settings};
   if(typeof module!=='undefined')module.exports=root.CanopyEngine;
 })(typeof window!=='undefined'?window:globalThis);
