@@ -69,7 +69,12 @@
       for(let i=0;i<frames;i++){
         checkAbort(signal);if(failure)throw failure;
         CanopyEngine.draw(high,model,study,i/(frames-1),options);
-        if(high!==canvas)context.drawImage(high,0,0,width,height);
+        if(high!==canvas){
+          // This is a pixel-space resize, never an artwork-space transform.
+          // Clear the probe/previous frame completely before copying the image.
+          context.setTransform(1,0,0,1,0,0);context.globalAlpha=1;context.globalCompositeOperation='source-over';
+          context.clearRect(0,0,width,height);context.drawImage(high,0,0,width,height);
+        }
         const timestamp=Math.round(i*1e6/fps),duration=Math.round((i+1)*1e6/fps)-timestamp;
         const frame=new VideoFrame(canvas,{timestamp,duration});
         try{encoder.encode(frame,{keyFrame:i%120===0});}finally{frame.close();}

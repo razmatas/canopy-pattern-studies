@@ -62,3 +62,21 @@ Choose **MP4 size** beside Save MP4: 1080 × 1080 (default), 2048 × 2048, or 40
 Before rendering, the app checks the exact size/rate with WebCodecs and encodes a real probe frame. H.264 levels are selected per resolution; HEVC is tried when the requested H.264 size is unavailable. A failed capability check explains the requested size and offers smaller-size/browser alternatives. It never silently reduces size or frame rate. HEVC MP4 playback requires a compatible player.
 
 Bitrate targets scale from 24 Mbps at 1080 to 48 Mbps at 2K and 80 Mbps at 4K. The encoding queue shrinks with frame size, cancellation closes an active encoder (including capability probing), and drawing surfaces are capped at 4096 × 4096. Smaller outputs retain 2× supersampling; 4K draws the vector paths at native resolution without an 8192-pixel intermediate buffer. Higher sizes take longer and produce larger files.
+
+## Preview / movie consistency regression
+
+The encoder capability probe previously left a framing transform on the output canvas. When a supersampled frame was copied onto it, the transform was applied a second time and the probe square was not fully cleared. This affected 1080/2K exports even though the files had valid dimensions, frame counts and playback. Artwork drawing now restores the caller's canvas state; movie resizing explicitly resets to pixel coordinates and clears the entire destination before each copy.
+
+`tests/export-consistency.cjs` runs a real Chrome export, decodes selected MP4 frames with ffmpeg, and compares their artwork against the visible preview and downloaded SVG/PNG at exactly the same normalized growth positions. It checks early, middle and final frames at 240% zoom with off-centre framing. It also checks metadata, foreground geometry coverage, colour error, and renderer state isolation. The test is designed to reject the actual double-transform failure, rather than merely accept a playable file.
+
+Start the local server, install/provide `playwright` and `sharp` for Node, and make `ffmpeg` / `ffprobe` available on PATH:
+
+```sh
+node tests/export-consistency.cjs
+# A single output size, with artifacts in a chosen folder:
+node tests/export-consistency.cjs --sizes=1080 --out=/tmp/canopy-export-check
+# Confirm a supplied broken 12-second movie is detected:
+node tests/export-consistency.cjs --sizes=1080 --existing=/absolute/path/to/movie.mp4 --expect-mismatch
+```
+
+The full regression creates 12-second exports at all three sizes. Browser codec support is required; an unavailable size fails with the app's actual error. Prior to this fix the complete tracked app was preserved in `saved/2026-10-29-before-export-transform-fix/app-before-fix.zip` and Git revision `e1a7f87`.

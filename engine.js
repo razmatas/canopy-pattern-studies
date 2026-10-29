@@ -76,10 +76,15 @@
   function framing(options={}){const f=options.framing||{};return {zoom:clamp(Number(f.zoom)||1,.25,4),x:clamp(Number(f.x)||0,-560,560),y:clamp(Number(f.y)||0,-560,560)};}
   function draw(canvas,model,study,t,options={}){
     const ctx=canvas.getContext('2d'),f=framing(options),scale=canvas.width/SIZE;
-    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle=options.paper||'#235355';ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.setTransform(scale,0,0,scale,0,0);ctx.translate(C+f.x,C+f.y);ctx.scale(f.zoom,f.zoom);
-    ctx.strokeStyle=options.ink||'#E3F3AA';ctx.lineCap='round';ctx.lineJoin='round';paint(ctx,geometry(model,study,t,options));
+    // Rendering owns its transform and style state. Callers may subsequently
+    // use the same canvas for untransformed pixel copies (including encoding).
+    ctx.save();
+    try{
+      ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,canvas.width,canvas.height);
+      ctx.fillStyle=options.paper||'#235355';ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.setTransform(scale,0,0,scale,0,0);ctx.translate(C+f.x,C+f.y);ctx.scale(f.zoom,f.zoom);
+      ctx.strokeStyle=options.ink||'#E3F3AA';ctx.lineCap='round';ctx.lineJoin='round';paint(ctx,geometry(model,study,t,options));
+    }finally{ctx.restore();}
   }
   function svg(model,study,t,options={}){
     const ink=options.ink||'#ffffff',paper=options.paper===undefined?'#000000':options.paper,parts=geometry(model,study,t,options);
