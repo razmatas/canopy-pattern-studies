@@ -80,3 +80,13 @@ node tests/export-consistency.cjs --sizes=1080 --existing=/absolute/path/to/movi
 ```
 
 The full regression creates 12-second exports at all three sizes. Browser codec support is required; an unavailable size fails with the app's actual error. Prior to this fix the complete tracked app was preserved in `saved/2026-10-29-before-export-transform-fix/app-before-fix.zip` and Git revision `e1a7f87`.
+
+## Publish to Handover Page
+
+Package the finished static app with content-hashed filenames:
+
+```sh
+python3 package-static.py /tmp/canopy-handover.zip
+```
+
+Upload that ZIP through the existing Handover project. Asset URLs remain relative, including worker imports. The packager checks that all referenced files exist and writes a SHA-256 manifest beside the ZIP. Hashes change with file contents and rewritten dependencies, so long-lived CDN caches cannot reuse an older renderer or exporter under the same filename. Query-string versions alone are insufficient for this host. The local app and its source filenames remain unchanged.
